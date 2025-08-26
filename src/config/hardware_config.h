@@ -4,8 +4,8 @@
 // ESP32-S3 Nano Pin Configuration for Patient Vibration Monitor
 
 // I2C Configuration for MPU6050
-#define I2C_SDA_PIN         21
-#define I2C_SCL_PIN         22
+#define I2C_SDA_PIN         11
+#define I2C_SCL_PIN         12
 #define I2C_FREQUENCY       400000  // 400kHz
 
 // Alert System Pins
@@ -20,8 +20,8 @@
 
 // MPU6050 Configuration
 #define MPU6050_I2C_ADDR    0x68    // Default I2C address
-#define ACCEL_RANGE         2       // ±2g
-#define GYRO_RANGE          250     // ±250°/s
+#define ACCEL_RANGE         8       // ±8g
+#define GYRO_RANGE          500     // ±500°/s
 
 // System Configuration
 #define SENSOR_SAMPLE_RATE  100     // 100Hz sensor sampling
