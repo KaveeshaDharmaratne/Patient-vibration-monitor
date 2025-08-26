@@ -1,135 +1,125 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <WiFi.h>
 #include "Adafruit_MPU6050.h"
 #include "Adafruit_Sensor.h"
 
-// // Project includes (to be created)
-// // #include "sensors/sensor_manager.h"
-// // #include "ml/ml_inference.h"
-// // #include "alerts/alert_manager.h"
-// // #include "communications/wifi_manager.h"
-// // #include "communications/mqtt_client.h"
-// // #include "config/system_config.h"
-
+// MPU6050 sensor instance
 Adafruit_MPU6050 mpu;
-unsigned long timestamp;
-unsigned long lastTimestamp;
+
+// Timing variables for precise sampling
+unsigned long lastSampleTime = 0;
+const unsigned long SAMPLE_INTERVAL_US = 10000; // 100Hz sampling (10ms = 10,000 microseconds)
+
+// Calibration variables
+float accel_offset_x = 0.0, accel_offset_y = 0.0, accel_offset_z = 0.0;
+float gyro_offset_x = 0.0, gyro_offset_y = 0.0, gyro_offset_z = 0.0;
+const int CALIBRATION_SAMPLES = 1000;
 
 void setup() {
   Serial.begin(115200);
-
-  if(!mpu.begin()) {
-    Serial.println("Sensor initialization failed");
-    while(1)
-      yield(); // Halt if sensor fails
+  while (!Serial) {
+    delay(10); // Wait for serial port to connect
   }
-
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
   
-
+  // Initialize I2C with optimized settings for ESP32 S3
+  Wire.begin(); // SDA=11, SCL=12 for ESP32 S3 Nano
+  Wire.setClock(400000); // 400kHz I2C clock for faster communication
+  
+  // Initialize MPU6050
+  if (!mpu.begin(0x68, &Wire)) {
+    while (1) {
+      delay(1000);
+    }
+  }
+  
+  // Configure MPU6050 for optimal vibration detection
+  // Accelerometer: ±4G range for hand vibration (more sensitive than ±8G)
+  mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+  
+  // Gyroscope: ±500°/s range (suitable for hand movements)
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  
+  // Digital Low Pass Filter: 94Hz bandwidth for vibration frequencies
+  // This allows detection of tremor frequencies (4-12 Hz) while filtering noise
+  mpu.setFilterBandwidth(MPU6050_BAND_94_HZ);
+  
+  // Perform sensor calibration
+  delay(2000);
+  calibrateSensor();
+  
+  // Start data collection automatically
+  lastSampleTime = micros();
+  Serial.println("ax,ay,az,gx,gy,gz"); // CSV header for Edge Impulse
 }
 
 void loop() {
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  // Serial.print("timeStamp\t");
-
-  // Serial.print(millis());
-  Serial.print(a.acceleration.x);
-  Serial.print("\t");
-  Serial.print(a.acceleration.y);
-  Serial.print("\t");
-  Serial.print(a.acceleration.z);
-  Serial.print("\t");
+  unsigned long currentTime = micros();
   
-  Serial.print(g.gyro.x);
-  Serial.print("\t");
-  Serial.print(g.gyro.y);
-  Serial.print("\t");
-  Serial.print(g.gyro.z);
-  Serial.print("\n");
-
-
-  delay(100);
-
+  // Check if it's time for the next sample
+  if (currentTime - lastSampleTime >= SAMPLE_INTERVAL_US) {
+    collectSample();
+    lastSampleTime = currentTime;
+  }
+  
+  // Small delay to prevent watchdog timeout
+  delayMicroseconds(100);
 }
 
-// // System state
-// bool systemInitialized = false;
-// bool wifiConnected = false;
-// bool sensorCalibrated = false;
+void collectSample() {
+  sensors_event_t accel, gyro, temp;
+  
+  // Get sensor readings
+  mpu.getEvent(&accel, &gyro, &temp);
+  
+  // Apply calibration offsets
+  float ax = accel.acceleration.x - accel_offset_x;
+  float ay = accel.acceleration.y - accel_offset_y;
+  float az = accel.acceleration.z - accel_offset_z;
+  
+  float gx = gyro.gyro.x - gyro_offset_x;
+  float gy = gyro.gyro.y - gyro_offset_y;
+  float gz = gyro.gyro.z - gyro_offset_z;
+  
+  // Output data in Edge Impulse CSV format (comma-separated)
+  Serial.print(ax, 4);
+  Serial.print(",");
+  Serial.print(ay, 4);
+  Serial.print(",");
+  Serial.print(az, 4);
+  Serial.print(",");
+  Serial.print(gx, 4);
+  Serial.print(",");
+  Serial.print(gy, 4);
+  Serial.print(",");
+  Serial.println(gz, 4);
+}
 
-// // Timing variables
-// unsigned long lastSensorRead = 0;
-// unsigned long lastMLInference = 0;
-// const unsigned long SENSOR_INTERVAL = 10; // 100Hz sampling
-// const unsigned long ML_INTERVAL = 1000;   // 1Hz inference
-
-// void setup() {
-//   Serial.begin(115200);
-//   delay(1000);
+void calibrateSensor() {
+  float accel_sum_x = 0, accel_sum_y = 0, accel_sum_z = 0;
+  float gyro_sum_x = 0, gyro_sum_y = 0, gyro_sum_z = 0;
   
-//   Serial.println("=== Patient Vibration Monitor ===");
-//   Serial.println("Initializing system...");
-  
-//   // Initialize I2C for MPU6050
-//   Wire.begin();
-  
-//   // TODO: Initialize components
-//   // 1. Load configuration
-//   // 2. Initialize sensors (MPU6050)
-//   // 3. Calibrate sensors
-//   // 4. Initialize WiFi
-//   // 5. Initialize MQTT client
-//   // 6. Initialize alert system
-//   // 7. Load ML model
-  
-//   Serial.println("System initialization completed");
-//   systemInitialized = true;
-// }
-
-// void loop() {
-//   if (!systemInitialized) {
-//     delay(100);
-//     return;
-//   }
-  
-//   unsigned long currentTime = millis();
-  
-//   // Read sensors at high frequency (100Hz)
-//   if (currentTime - lastSensorRead >= SENSOR_INTERVAL) {
-//     // TODO: Read MPU6050 data
-//     // - Read accelerometer and gyroscope
-//     // - Store in data buffer for ML processing
-//     // - Update sensor status
+  // Collect calibration samples
+  for (int i = 0; i < CALIBRATION_SAMPLES; i++) {
+    sensors_event_t accel, gyro, temp;
+    mpu.getEvent(&accel, &gyro, &temp);
     
-//     lastSensorRead = currentTime;
-//   }
-  
-//   // Perform ML inference at lower frequency (1Hz)
-//   if (currentTime - lastMLInference >= ML_INTERVAL) {
-//     // TODO: ML inference
-//     // - Prepare feature vector from sensor data buffer
-//     // - Run Edge Impulse inference
-//     // - Process classification results
-//     // - Trigger alerts if critical pattern detected
+    accel_sum_x += accel.acceleration.x;
+    accel_sum_y += accel.acceleration.y;
+    accel_sum_z += accel.acceleration.z;
     
-//     lastMLInference = currentTime;
+    gyro_sum_x += gyro.gyro.x;
+    gyro_sum_y += gyro.gyro.y;
+    gyro_sum_z += gyro.gyro.z;
     
-//     // Debug output
-//     Serial.println("System running - ML inference cycle");
-//   }
+    delay(5); // 5ms delay between calibration samples
+  }
   
-//   // TODO: Handle other tasks
-//   // - Process MQTT messages
-//   // - Update system status
-//   // - Handle configuration updates
-//   // - Manage alert states
+  // Calculate offsets (average of all samples)
+  accel_offset_x = accel_sum_x / CALIBRATION_SAMPLES;
+  accel_offset_y = accel_sum_y / CALIBRATION_SAMPLES;
+  accel_offset_z = (accel_sum_z / CALIBRATION_SAMPLES) - 9.81; // Remove gravity from Z-axis
   
-//   // Small delay to prevent watchdog issues
-//   delay(1);
-// }
+  gyro_offset_x = gyro_sum_x / CALIBRATION_SAMPLES;
+  gyro_offset_y = gyro_sum_y / CALIBRATION_SAMPLES;
+  gyro_offset_z = gyro_sum_z / CALIBRATION_SAMPLES;
+}
