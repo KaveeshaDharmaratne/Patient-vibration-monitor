@@ -156,11 +156,24 @@ static const uint8_t image_data_LOGOv5[1024] = {
 
 
 
-void displayLogo(){
+void displayLogo(){//this function displays the logo on the OLED display
   display.clearDisplay();
   display.drawBitmap(0,0, image_data_LOGOv5, 122, 64, 1);
   display.display();
   delay(2000);
+}
+void loadingBar(){//this function creates a loading bar animation on the OLED display
+   display.clearDisplay();
+   display.setTextSize(1);
+   display.setTextColor(WHITE);
+   display.setCursor(10, 45);
+   display.println("Loading...");
+  display.drawRoundRect(10, 57, 108, 5, 2, WHITE);
+   for (int i = 0; i <= 108; i++) {
+    display.fillRoundRect(10, 57, i, 5, 2, WHITE);
+    display.display();
+    delay(20); // Adjust speed as needed
+  }
 }
 void calibrateSensor() {
   float accel_sum_x = 0, accel_sum_y = 0, accel_sum_z = 0;
@@ -225,6 +238,10 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) {
     delay(10); // Wait for serial port to connect
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+     for(;;); // Don't proceed, loop forever
+    }
   }
   
   // Initialize I2C with optimized settings for ESP32 S3
