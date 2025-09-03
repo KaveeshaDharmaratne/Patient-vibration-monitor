@@ -8,7 +8,7 @@ Adafruit_MPU6050 mpu;
 
 // Timing variables for precise sampling
 unsigned long lastSampleTime = 0;
-// const unsigned long SAMPLE_INTERVAL_US = 10000; // 100Hz sampling (10ms = 10,000 microseconds)
+const unsigned long SAMPLE_INTERVAL_US = 10000; // 100Hz sampling (10ms = 10,000 microseconds)
 
 // Calibration variables
 float accel_offset_x = 0.0, accel_offset_y = 0.0, accel_offset_z = 0.0;
@@ -21,8 +21,8 @@ void calibrateSensor() {
   
   // Collect calibration samples
   for (int i = 0; i < CALIBRATION_SAMPLES; i++) {
-    sensors_event_t accel;
-    mpu.getEvent(&accel, nullptr, nullptr);
+    sensors_event_t accel, gyro, temp;
+    mpu.getEvent(&accel, &gyro, &temp);
 
     accel_sum_x += accel.acceleration.x;
     accel_sum_y += accel.acceleration.y;
@@ -49,8 +49,7 @@ void collectSample() {
   sensors_event_t accel, gyro, temp;
   
   // Get sensor readings
-  mpu.getEvent(&accel, nullptr, nullptr);
-  // mpu.getEvent(&accel, &gyro, &temp);
+  mpu.getEvent(&accel, &gyro, &temp);
   
   // Apply calibration offsets
   float ax = accel.acceleration.x - accel_offset_x;
@@ -66,8 +65,8 @@ void collectSample() {
   Serial.print(",");
   Serial.print(ay, 4);
   Serial.print(",");
-  Serial.print(az, 4);
-  Serial.print(",");
+  Serial.println(az, 4);
+  // Serial.print(",");
   // Serial.print(gx, 4);
   // Serial.print(",");
   // Serial.print(gy, 4);
@@ -114,13 +113,13 @@ void setup() {
 }
 
 void loop() {
-  // unsigned long currentTime = micros();
+  unsigned long currentTime = micros();
   
   // Check if it's time for the next sample
-  // if (currentTime - lastSampleTime >= SAMPLE_INTERVAL_US) {
+  if (currentTime - lastSampleTime >= SAMPLE_INTERVAL_US) {
     collectSample();
-  //   lastSampleTime = currentTime;
-  // }
+    lastSampleTime = currentTime;
+  }
   
   // Small delay to prevent watchdog timeout
   delayMicroseconds(100);
