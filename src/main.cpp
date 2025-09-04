@@ -21,6 +21,7 @@ const int CALIBRATION_SAMPLES = 1000;
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 static const uint8_t image_data_LOGOv5[1024] = {
     // ∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙∙
@@ -174,7 +175,7 @@ void loadingBar(){//this function creates a loading bar animation on the OLED di
     display.display();
     delay(20); // Adjust speed as needed
   }
-}
+} 
 void calibrateSensor() {
   float accel_sum_x = 0, accel_sum_y = 0, accel_sum_z = 0;
   float gyro_sum_x = 0, gyro_sum_y = 0, gyro_sum_z = 0;
@@ -233,17 +234,21 @@ void collectSample() {
   Serial.print(",");
   Serial.println(gz, 4);
 }
-
+#define buzzerPin A2
 void setup() {
+  pinMode(buzzerPin,OUTPUT);
+  digitalWrite(buzzerPin,LOW);
   Serial.begin(115200);
-  while (!Serial) {
-    delay(10); // Wait for serial port to connect
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
+  while(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
     Serial.println(F("SSD1306 allocation failed"));
      for(;;); // Don't proceed, loop forever
     }
+  while (!Serial) {
+    delay(10); // Wait for serial port to connect
+    Serial.println("Waiting for Serial connection...");
   }
   
+
   // Initialize I2C with optimized settings for ESP32 S3
   Wire.begin(); // SDA=11, SCL=12 for ESP32 S3 Nano
   Wire.setClock(400000); // 400kHz I2C clock for faster communication
@@ -278,9 +283,11 @@ void setup() {
 void loop() {
   unsigned long currentTime = micros();
   displayLogo();
+  loadingBar();
+  
   // Check if it's time for the next sample
   // if (currentTime - lastSampleTime >= SAMPLE_INTERVAL_US) {
-    collectSample();
+  collectSample();
   //   lastSampleTime = currentTime;
   // }
   
