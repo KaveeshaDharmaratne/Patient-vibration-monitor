@@ -19,6 +19,9 @@ private:
   float features[EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME];
   int feature_index;
   bool buffer_full;
+  float ax;
+  float ay;
+  float az;
 
 public:
   SensorManager();
@@ -38,7 +41,9 @@ public:
   float* getFeatures();           // Get features array for inference
   void resetBuffer();             // Reset buffer for next inference window
   int getFeatureCount();          // Get total number of features
-
+  float getAx();    // Get latest ax value
+  float getAy();    // Get latest ay value 
+  float getAz();    // Get latest az value   
 };
 
 #endif // SENSOR_MANAGER_H

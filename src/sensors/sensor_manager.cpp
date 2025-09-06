@@ -22,6 +22,8 @@ float features[EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FR
 int feature_index = 0;
 bool buffer_full = false;
 
+float ax = 0.0, ay = 0.0, az = 0.0;
+
 SensorManager::SensorManager() :
     sensorInitialized(false),
     sensorCalibrated(false),
@@ -31,6 +33,9 @@ SensorManager::SensorManager() :
 SensorManager::~SensorManager() {
     // Cleanup if needed
 }
+float SensorManager::getAx() { return ax; }
+float SensorManager::getAy() { return ay; }
+float SensorManager::getAz() { return az; }
 
 bool SensorManager::initialize() {
   // Initialize I2C with optimized settings for ESP32 S3
@@ -97,9 +102,9 @@ bool SensorManager::collectSample() {
   mpu.getEvent(&accel, &gyro, &temp);
 
   // Apply calibration offsets
-  float ax = accel.acceleration.x - accel_offset_x;
-  float ay = accel.acceleration.y - accel_offset_y;
-  float az = accel.acceleration.z - accel_offset_z;
+   ax = accel.acceleration.x - accel_offset_x;
+   ay = accel.acceleration.y - accel_offset_y;
+   az = accel.acceleration.z - accel_offset_z;
 
   // Store in features buffer for Edge Impulse inference
   if (feature_index < EI_CLASSIFIER_RAW_SAMPLE_COUNT) {

@@ -25,7 +25,7 @@ private:
     void drawSensorData(float ax, float ay, float az);
     void drawDateTime(const char* date, const char* time);
     void drawStatusIcons();
-
+    
 public:
     DisplayManager();
     ~DisplayManager();
@@ -34,6 +34,9 @@ public:
     void showLogo();
     void updateLoadingProgress(const char* status, int progress);
     void showMainScreen(float ax, float ay, float az, const char* date, const char* time, int batteryLevel);
+    void updateBatteryLevel(int percentage);
+    void updateSensorData(float ax, float ay, float az);
+    void updateDateTime(const char* date, const char* time);
     
     // Status update methods
     void setWifiStatus(bool status);
