@@ -10,15 +10,19 @@ This directory handles all communication protocols for the Patient Vibration Mon
 
 ## Changes Log
 
-### 2025-08-22 - Initial Setup
+### 2025-09-06 - MQTT Integration in Main
+- Integrated MQTT client in `main.cpp` for publishing anomaly alerts
+- Added MQTT connection in setup after WiFi
+- Publishes anomaly alerts to "patient/alerts" topic when anomaly score exceeds threshold
+- Added mqtt.loop() in main loop for client maintenance
+
+### 2025-09-06 - MQTT Client Implementation
 - Created communications directory structure
 - Planned MQTT integration for critical alerts
 - Designed WiFi connection management system
 - Prepared for secure communication protocols
 
 ## Planned Files
-- `wifi_manager.h/.cpp`: WiFi connection and management
-- `mqtt_client.h/.cpp`: MQTT client for real-time messaging
 - `http_client.h/.cpp`: HTTP client for data upload and configuration
 - `communication_config.h`: Configuration constants and credentials
 

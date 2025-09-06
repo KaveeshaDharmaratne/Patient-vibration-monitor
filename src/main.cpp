@@ -1,20 +1,33 @@
 #include <Arduino.h>
 #include "sensors/sensor_manager.h"
 #include "alerts/alert_manager.h"
+#include "communications/mqtt_client.h"
+#include "communications/wifi_manager.h"
 
 // Display includes
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// Edge Impulse SDK includes (these will be available after you add the SDK)
+// ML includes
 #include "edge-impulse-sdk/classifier/ei_run_classifier.h"
+
+// Time includes
+#include <time.h>
+
+#define buzzerPin A2
 
 // Display configuration
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define OLED_RESET    -1
+#define OLED_RESET -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// NTP server settings
+const char* ntpServer = "pool.ntp.org";  // Public NTP server
+const long  gmtOffset_sec = 19800;       // GMT+5:30 (SL) = 5.5 * 3600
+const int   daylightOffset_sec = 0;
+char timeString[30];
 
 // Logo bitmap data
 static const uint8_t image_data_LOGOv5[1024] = {
@@ -82,50 +95,86 @@ static const uint8_t image_data_LOGOv5[1024] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-// Create sensor manager instance
 SensorManager sensorManager;
 
-// Create alert manager instance
 AlertManager alertManager;
 
-// Anomaly detection threshold (adjust based on your model training)
-// Typical range: 0.3 - 0.8, start with 0.5
+MQTTClient mqtt("test.mosquitto.org", 1883, "esp32-patient-monitor");
+
 const float ANOMALY_THRESHOLD = 0.5;
 
 // Display functions
-void displayLogo() {
+void displayLogo()
+{
   display.clearDisplay();
   display.drawBitmap(0, 0, image_data_LOGOv5, 122, 64, 1);
   display.display();
   delay(2000);
 }
 
-void loadingBar() {
+void loadingBar()
+{
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(10, 45);
   display.println("Loading...");
   display.drawRoundRect(10, 57, 108, 5, 2, WHITE);
-  for (int i = 0; i <= 108; i++) {
+  for (int i = 0; i <= 108; i++)
+  {
     display.fillRoundRect(10, 57, i, 5, 2, WHITE);
     display.display();
     delay(20);
   }
 }
-#define buzzerPin A2
-void setup() {
-  pinMode(buzzerPin,OUTPUT);
-  digitalWrite(buzzerPin,LOW);
+
+void setup()
+{
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
   Serial.begin(115200);
-  while(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-     for(;;); // Don't proceed, loop forever
+
+  // Initialize WiFi and MQTT
+  WiFiManager wifi(WIFI_SSID, WIFI_PASSWORD);
+  if (wifi.connect())
+  {
+    Serial.println("WiFi connected successfully.");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+
+    // Initialize MQTT
+    if (mqtt.connect()) {
+      Serial.println("MQTT connected successfully.");
+    } else {
+      Serial.println("MQTT connection failed.");
     }
-  while (!Serial) {
+  }
+  else
+  {
+    Serial.println("WiFi connection failed. Continuing without WiFi.");
+  }
+
+  // Configure time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  // Wait for time to sync
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println("Time synced");
+
+  while (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  { // Address 0x3C for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ; // Don't proceed, loop forever
+  }
+  while (!Serial)
+  {
     delay(10); // Wait for serial port to connect
     Serial.println("Waiting for Serial connection...");
   }
@@ -133,9 +182,11 @@ void setup() {
   Serial.println("=== Patient Vibration Monitor with ML ===");
 
   // Initialize OLED display
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  {
     Serial.println("SSD1306 allocation failed");
-    while (1);
+    while (1)
+      ;
   }
   display.clearDisplay();
   display.setTextSize(1);
@@ -150,17 +201,21 @@ void setup() {
   Serial.println("Initializing Edge Impulse SDK...");
 
   // Initialize the sensor
-  if (!sensorManager.initialize()) {
+  if (!sensorManager.initialize())
+  {
     Serial.println("MPU6050 initialization failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
 
   // Initialize the alert manager
-  if (!alertManager.initialize()) {
+  if (!alertManager.initialize())
+  {
     Serial.println("Alert manager initialization failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
@@ -169,9 +224,11 @@ void setup() {
   delay(2000); // Give sensor time to stabilize
   Serial.println("Calibrating sensor...");
 
-  if (!sensorManager.calibrate()) {
+  if (!sensorManager.calibrate())
+  {
     Serial.println("Calibration failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
@@ -181,46 +238,74 @@ void setup() {
   Serial.println("ax,ay,az"); // CSV header for Edge Impulse data collection
 }
 
-void loop() {
+void loop()
+{
   // Check if it's time to collect a sample
-  if (sensorManager.shouldCollectSample()) {
+  if (sensorManager.shouldCollectSample())
+  {
     sensorManager.collectSample();
 
     // Check if we have enough data for inference
-    if (sensorManager.isBufferFull()) {
+    if (sensorManager.isBufferFull())
+    {
       Serial.println("\n--- Running Edge Impulse Inference ---");
 
       // Prepare signal for inference
       signal_t signal;
       numpy::signal_from_buffer(sensorManager.getFeatures(),
-                              EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME,
-                              &signal);
+                                EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME,
+                                &signal);
 
       // Run classifier
       ei_impulse_result_t result = {0};
       EI_IMPULSE_ERROR res = run_classifier(&signal, &result, false);
 
-      if (res != EI_IMPULSE_OK) {
+      if (res != EI_IMPULSE_OK)
+      {
         Serial.println("Edge Impulse inference failed!");
-      } else {
+      }
+      else
+      {
         // Print anomaly score
         float anomaly_score = result.anomaly;
         Serial.print("Anomaly Score: ");
         Serial.println(anomaly_score, 4);
 
         // Check for abnormal patterns
-        if (anomaly_score > ANOMALY_THRESHOLD) {
+        if (anomaly_score > ANOMALY_THRESHOLD)
+        {
+          // Get current time
+          struct tm timeinfo;
+          if (getLocalTime(&timeinfo)) {
+            strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            Serial.println(timeString);
+          } else {
+            Serial.println("Time not available");
+          }
+
           // Anomaly detected - trigger alert
           Serial.println("ALERT: Abnormal vibration pattern detected!");
+          
+          // Publish to MQTT
+          String payload = "Anomaly detected! Score: " + String(anomaly_score, 4) + "\n" + timeString;
+          if (mqtt.publish("patient/alerts", payload.c_str())) {
+            Serial.println("Alert published.");
+          } else {
+            Serial.println("Failed to publish alert.");
+          }
+          
           // Note: Alert triggering removed in simplified version
           // alertManager.triggerAlert(AlertType::ANOMALY_DETECTED, anomaly_score);
-        } else {
+        }
+        else
+        {
           Serial.println("✓ Normal vibration pattern");
         }
 
         // Print classification results for all labels
         Serial.println("Classification Results:");
-        for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
+        for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++)
+        {
           Serial.print("  ");
           Serial.print(result.classification[i].label);
           Serial.print(": ");
@@ -237,10 +322,9 @@ void loop() {
   // Update alert manager (handles button press detection and buzzer timing)
   alertManager.update();
 
+  // Update MQTT client
+  mqtt.loop();
+
   // Small delay to prevent watchdog timeout
   delayMicroseconds(100);
 }
-
-
-
-
