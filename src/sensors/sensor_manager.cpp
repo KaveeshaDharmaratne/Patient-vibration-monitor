@@ -29,7 +29,7 @@ SensorManager::SensorManager() :
     buffer_full(false) {}
 
 SensorManager::~SensorManager() {
-    // Cleanup if needed
+    
 }
 
 bool SensorManager::initialize() {

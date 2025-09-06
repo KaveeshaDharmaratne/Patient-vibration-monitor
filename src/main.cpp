@@ -1,19 +1,22 @@
 #include <Arduino.h>
 #include "sensors/sensor_manager.h"
 #include "alerts/alert_manager.h"
+#include "communications/wifi_manager.h"
+#include "config/cred_config.h"
 
 // Display includes
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// Edge Impulse SDK includes (these will be available after you add the SDK)
 #include "edge-impulse-sdk/classifier/ei_run_classifier.h"
+
+#define buzzerPin A2
 
 // Display configuration
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define OLED_RESET    -1
+#define OLED_RESET -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Logo bitmap data
@@ -82,50 +85,66 @@ static const uint8_t image_data_LOGOv5[1024] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-// Create sensor manager instance
 SensorManager sensorManager;
 
-// Create alert manager instance
 AlertManager alertManager;
 
-// Anomaly detection threshold (adjust based on your model training)
-// Typical range: 0.3 - 0.8, start with 0.5
 const float ANOMALY_THRESHOLD = 0.5;
 
 // Display functions
-void displayLogo() {
+void displayLogo()
+{
   display.clearDisplay();
   display.drawBitmap(0, 0, image_data_LOGOv5, 122, 64, 1);
   display.display();
   delay(2000);
 }
 
-void loadingBar() {
+void loadingBar()
+{
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(10, 45);
   display.println("Loading...");
   display.drawRoundRect(10, 57, 108, 5, 2, WHITE);
-  for (int i = 0; i <= 108; i++) {
+  for (int i = 0; i <= 108; i++)
+  {
     display.fillRoundRect(10, 57, i, 5, 2, WHITE);
     display.display();
     delay(20);
   }
 }
-#define buzzerPin A2
-void setup() {
-  pinMode(buzzerPin,OUTPUT);
-  digitalWrite(buzzerPin,LOW);
+
+void setup()
+{
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
   Serial.begin(115200);
-  while(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
+
+  // Initialize WiFi
+  WiFiManager wifi(WIFI_SSID, WIFI_PASSWORD);
+  if (wifi.connect())
+  {
+    Serial.println("WiFi connected successfully.");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
+  else
+  {
+    Serial.println("WiFi connection failed. Continuing without WiFi.");
+  }
+
+  while (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  { // Address 0x3C for 128x64
     Serial.println(F("SSD1306 allocation failed"));
-     for(;;); // Don't proceed, loop forever
-    }
-  while (!Serial) {
+    for (;;)
+      ; // Don't proceed, loop forever
+  }
+  while (!Serial)
+  {
     delay(10); // Wait for serial port to connect
     Serial.println("Waiting for Serial connection...");
   }
@@ -133,9 +152,11 @@ void setup() {
   Serial.println("=== Patient Vibration Monitor with ML ===");
 
   // Initialize OLED display
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  {
     Serial.println("SSD1306 allocation failed");
-    while (1);
+    while (1)
+      ;
   }
   display.clearDisplay();
   display.setTextSize(1);
@@ -150,17 +171,21 @@ void setup() {
   Serial.println("Initializing Edge Impulse SDK...");
 
   // Initialize the sensor
-  if (!sensorManager.initialize()) {
+  if (!sensorManager.initialize())
+  {
     Serial.println("MPU6050 initialization failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
 
   // Initialize the alert manager
-  if (!alertManager.initialize()) {
+  if (!alertManager.initialize())
+  {
     Serial.println("Alert manager initialization failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
@@ -169,9 +194,11 @@ void setup() {
   delay(2000); // Give sensor time to stabilize
   Serial.println("Calibrating sensor...");
 
-  if (!sensorManager.calibrate()) {
+  if (!sensorManager.calibrate())
+  {
     Serial.println("Calibration failed!");
-    while (1) {
+    while (1)
+    {
       delay(1000);
     }
   }
@@ -181,46 +208,56 @@ void setup() {
   Serial.println("ax,ay,az"); // CSV header for Edge Impulse data collection
 }
 
-void loop() {
+void loop()
+{
   // Check if it's time to collect a sample
-  if (sensorManager.shouldCollectSample()) {
+  if (sensorManager.shouldCollectSample())
+  {
     sensorManager.collectSample();
 
     // Check if we have enough data for inference
-    if (sensorManager.isBufferFull()) {
+    if (sensorManager.isBufferFull())
+    {
       Serial.println("\n--- Running Edge Impulse Inference ---");
 
       // Prepare signal for inference
       signal_t signal;
       numpy::signal_from_buffer(sensorManager.getFeatures(),
-                              EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME,
-                              &signal);
+                                EI_CLASSIFIER_RAW_SAMPLE_COUNT * EI_CLASSIFIER_RAW_SAMPLES_PER_FRAME,
+                                &signal);
 
       // Run classifier
       ei_impulse_result_t result = {0};
       EI_IMPULSE_ERROR res = run_classifier(&signal, &result, false);
 
-      if (res != EI_IMPULSE_OK) {
+      if (res != EI_IMPULSE_OK)
+      {
         Serial.println("Edge Impulse inference failed!");
-      } else {
+      }
+      else
+      {
         // Print anomaly score
         float anomaly_score = result.anomaly;
         Serial.print("Anomaly Score: ");
         Serial.println(anomaly_score, 4);
 
         // Check for abnormal patterns
-        if (anomaly_score > ANOMALY_THRESHOLD) {
+        if (anomaly_score > ANOMALY_THRESHOLD)
+        {
           // Anomaly detected - trigger alert
           Serial.println("ALERT: Abnormal vibration pattern detected!");
           // Note: Alert triggering removed in simplified version
           // alertManager.triggerAlert(AlertType::ANOMALY_DETECTED, anomaly_score);
-        } else {
+        }
+        else
+        {
           Serial.println("✓ Normal vibration pattern");
         }
 
         // Print classification results for all labels
         Serial.println("Classification Results:");
-        for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
+        for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++)
+        {
           Serial.print("  ");
           Serial.print(result.classification[i].label);
           Serial.print(": ");
@@ -240,7 +277,3 @@ void loop() {
   // Small delay to prevent watchdog timeout
   delayMicroseconds(100);
 }
-
-
-
-

@@ -10,15 +10,18 @@ This directory handles all communication protocols for the Patient Vibration Mon
 
 ## Changes Log
 
-### 2025-08-22 - Initial Setup
+### 2025-09-06 - MQTT Client Implementation
+- Created `mqtt_client.h` and `mqtt_client.cpp` for MQTT communication using PubSubClient
+- Implemented MQTTClient class with connect, publish, subscribe, loop, and callback methods
+- Configured for Mosquitto broker (default port 1883, server configurable)
+
+### 2025-09-06 - WiFi Manager Implementation
 - Created communications directory structure
 - Planned MQTT integration for critical alerts
 - Designed WiFi connection management system
 - Prepared for secure communication protocols
 
 ## Planned Files
-- `wifi_manager.h/.cpp`: WiFi connection and management
-- `mqtt_client.h/.cpp`: MQTT client for real-time messaging
 - `http_client.h/.cpp`: HTTP client for data upload and configuration
 - `communication_config.h`: Configuration constants and credentials
 
