@@ -4,18 +4,16 @@
 // ESP32-S3 Nano Pin Configuration for Patient Vibration Monitor
 
 // I2C Configuration for MPU6050
-#define I2C_SDA_PIN         11
-#define I2C_SCL_PIN         12
+#define I2C_SDA_PIN         11       // ESP32-S3 Nano default SDA pin - A4
+#define I2C_SCL_PIN         12       // ESP32-S3 Nano default SCL pin - A5
 #define I2C_FREQUENCY       400000  // 400kHz
 
 // Alert System Pins
-#define BUZZER_PIN          25      // PWM capable pin for buzzer
-#define LED_RED_PIN         26      // Red status LED
-#define LED_GREEN_PIN       27      // Green status LED
-#define LED_BLUE_PIN        14      // Blue status LED
+#define BUZZER_PIN          A2      // PWM capable pin for buzzer
 
 // User Interface
 #define BUTTON_PIN          0       // Built-in boot button
+#define ALERT_BUTTON_PIN    A1      // A1 pin for manual alert trigger
 #define BUTTON_PRESSED      LOW
 
 // MPU6050 Configuration
