@@ -1,15 +1,19 @@
 #include <Arduino.h>
 #include "sensors/sensor_manager.h"
 #include "alerts/alert_manager.h"
+#include "communications/mqtt_client.h"
 #include "communications/wifi_manager.h"
-#include "config/cred_config.h"
 
 // Display includes
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+// ML includes
 #include "edge-impulse-sdk/classifier/ei_run_classifier.h"
+
+// Time includes
+#include <time.h>
 
 #define buzzerPin A2
 
@@ -18,6 +22,12 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// NTP server settings
+const char* ntpServer = "pool.ntp.org";  // Public NTP server
+const long  gmtOffset_sec = 19800;       // GMT+5:30 (SL) = 5.5 * 3600
+const int   daylightOffset_sec = 0;
+char timeString[30];
 
 // Logo bitmap data
 static const uint8_t image_data_LOGOv5[1024] = {
@@ -91,6 +101,8 @@ SensorManager sensorManager;
 
 AlertManager alertManager;
 
+MQTTClient mqtt("test.mosquitto.org", 1883, "esp32-patient-monitor");
+
 const float ANOMALY_THRESHOLD = 0.5;
 
 // Display functions
@@ -124,18 +136,36 @@ void setup()
   digitalWrite(buzzerPin, LOW);
   Serial.begin(115200);
 
-  // Initialize WiFi
+  // Initialize WiFi and MQTT
   WiFiManager wifi(WIFI_SSID, WIFI_PASSWORD);
   if (wifi.connect())
   {
     Serial.println("WiFi connected successfully.");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+
+    // Initialize MQTT
+    if (mqtt.connect()) {
+      Serial.println("MQTT connected successfully.");
+    } else {
+      Serial.println("MQTT connection failed.");
+    }
   }
   else
   {
     Serial.println("WiFi connection failed. Continuing without WiFi.");
   }
+
+  // Configure time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  // Wait for time to sync
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println("Time synced");
 
   while (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   { // Address 0x3C for 128x64
@@ -244,8 +274,26 @@ void loop()
         // Check for abnormal patterns
         if (anomaly_score > ANOMALY_THRESHOLD)
         {
+          // Get current time
+          struct tm timeinfo;
+          if (getLocalTime(&timeinfo)) {
+            strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            Serial.println(timeString);
+          } else {
+            Serial.println("Time not available");
+          }
+
           // Anomaly detected - trigger alert
           Serial.println("ALERT: Abnormal vibration pattern detected!");
+          
+          // Publish to MQTT
+          String payload = "Anomaly detected! Score: " + String(anomaly_score, 4) + "\n" + timeString;
+          if (mqtt.publish("patient/alerts", payload.c_str())) {
+            Serial.println("Alert published.");
+          } else {
+            Serial.println("Failed to publish alert.");
+          }
+          
           // Note: Alert triggering removed in simplified version
           // alertManager.triggerAlert(AlertType::ANOMALY_DETECTED, anomaly_score);
         }
@@ -273,6 +321,9 @@ void loop()
 
   // Update alert manager (handles button press detection and buzzer timing)
   alertManager.update();
+
+  // Update MQTT client
+  mqtt.loop();
 
   // Small delay to prevent watchdog timeout
   delayMicroseconds(100);
