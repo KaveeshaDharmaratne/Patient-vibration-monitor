@@ -23,6 +23,9 @@ A real-time vibration monitoring system for patients using ESP32-S3 Nano, MPU605
 │   ├── sensors/              # MPU6050 and sensor management
 │   ├── alerts/               # Alert management (buzzer, LED, MQTT)
 │   ├── communications/       # WiFi, MQTT, HTTP communication
+|   ├── edge-impulse-sdk/     | 
+|   ├── model-parameters/     ├── # Not included here
+|   ├── tflite-model/         |
 │   └── config/               # Configuration management
 ├── data/                     # Sample data, calibration, logs
 ├── docs/                     # Documentation
@@ -42,12 +45,7 @@ A real-time vibration monitoring system for patients using ESP32-S3 Nano, MPU605
 🚧 **In Development** - Initial project structure created on 2025-08-22
 
 ## Next Steps
-1. Implement MPU6050 sensor integration
-2. Create Edge Impulse model training pipeline
-3. Develop alert system
-4. Implement MQTT communication
-5. Add configuration management
-6. Clinical validation and testing
+1. Integrate a mobile app. Currently using IOT MQTT Panel for testing purposes on android.
 
 ## License
 [To be determined - consider medical device regulatory requirements]
