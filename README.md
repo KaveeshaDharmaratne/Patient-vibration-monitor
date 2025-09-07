@@ -7,14 +7,12 @@ A real-time vibration monitoring system for patients using ESP32-S3 Nano, MPU605
 - **ESP32-S3 Nano**: Main microcontroller with WiFi and Bluetooth
 - **MPU6050**: 6-axis accelerometer and gyroscope sensor
 - **Buzzer**: Audio alert system
-- **Status LEDs**: Visual indicators (RGB or multiple single-color LEDs)
-- **Optional**: External speaker for enhanced audio alerts
+- **Status LEDs**: Visual indicators
 
 ## Features
 - Real-time vibration pattern detection using Edge Impulse ML models
 - Multi-modal alerts (audio, visual, remote)
 - MQTT communication for remote monitoring
-- WiFi connectivity with secure communication
 - Sensor calibration and data logging
 - Over-the-air configuration updates
 
@@ -23,7 +21,6 @@ A real-time vibration monitoring system for patients using ESP32-S3 Nano, MPU605
 ├── src/
 │   ├── main.cpp              # Main application entry point
 │   ├── sensors/              # MPU6050 and sensor management
-│   ├── ml/                   # Edge Impulse ML inference
 │   ├── alerts/               # Alert management (buzzer, LED, MQTT)
 │   ├── communications/       # WiFi, MQTT, HTTP communication
 │   └── config/               # Configuration management
