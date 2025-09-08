@@ -7,4 +7,4 @@
 src/edge-impulse-sdk
 src/model-parameters
 src/tflite-model
-config/secrets.h
+src/config/keys.h

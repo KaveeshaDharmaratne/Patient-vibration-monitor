@@ -4,7 +4,7 @@
 #include "communications/mqtt_client.h"
 #include "communications/wifi_manager.h"
 #include "config/cred_config.h"
-#include "config/secrets.h" // Not uploaded to GitHub for security. Contains Adafruit IO credentials
+#include "config/keys.h" // Not uploaded to GitHub for security. Contains Adafruit IO credentials
 
 // Display includes
 #include <Wire.h>
