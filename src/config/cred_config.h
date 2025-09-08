@@ -5,4 +5,5 @@
 const char* WIFI_SSID = "KS-device";
 const char* WIFI_PASSWORD = "qwerty999";
 
+
 #endif

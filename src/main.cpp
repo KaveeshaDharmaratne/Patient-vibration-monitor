@@ -3,6 +3,8 @@
 #include "alerts/alert_manager.h"
 #include "communications/mqtt_client.h"
 #include "communications/wifi_manager.h"
+#include "config/cred_config.h"
+#include "config/secrets.h" // Not uploaded to GitHub for security. Contains Adafruit IO credentials
 
 // Display includes
 #include <Wire.h>
@@ -101,7 +103,7 @@ SensorManager sensorManager;
 
 AlertManager alertManager;
 
-MQTTClient mqtt("test.mosquitto.org", 1883, "esp32-patient-monitor");
+MQTTClient mqtt("io.adafruit.com", 1883, "esp32-patient-monitor", ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY);
 
 const float ANOMALY_THRESHOLD = 0.5;
 
@@ -146,9 +148,9 @@ void setup()
 
     // Initialize MQTT
     if (mqtt.connect()) {
-      Serial.println("MQTT connected successfully.");
+      Serial.println("Adafruit IO connected successfully.");
     } else {
-      Serial.println("MQTT connection failed.");
+      Serial.println("Adafruit IO connection failed.");
     }
   }
   else
@@ -286,12 +288,14 @@ void loop()
           // Anomaly detected - trigger alert
           Serial.println("ALERT: Abnormal vibration pattern detected!");
           
-          // Publish to MQTT
-          String payload = "Anomaly detected! Score: " + String(anomaly_score, 4) + "\n" + timeString;
-          if (mqtt.publish("patient/alerts", payload.c_str())) {
-            Serial.println("Alert published.");
+          // Publish to Adafruit IO
+          String topic = String(ADAFRUIT_IO_USERNAME) + "/feeds/" + ADAFRUIT_IO_FEED;
+          String payload = String(timeString) + " - Anomaly Detected! \n PLEASE CHECK ON THE PATIENT.";
+          
+          if (mqtt.publish(topic.c_str(), payload.c_str())) {
+            Serial.println("Alert sent to Adafruit IO.");
           } else {
-            Serial.println("Failed to publish alert.");
+            Serial.println("Failed to send alert to Adafruit IO.");
           }
           
           // Note: Alert triggering removed in simplified version
