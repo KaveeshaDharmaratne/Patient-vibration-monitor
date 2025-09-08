@@ -1,12 +1,16 @@
 #include "mqtt_client.h"
 
-MQTTClient::MQTTClient(const char* server, int port, const char* clientId) 
-    : _server(server), _port(port), _clientId(clientId), _client(_wifiClient) {
+MQTTClient::MQTTClient(const char* server, int port, const char* clientId, const char* username, const char* password) 
+    : _server(server), _port(port), _clientId(clientId), _username(username), _password(password), _client(_wifiClient) {
     _client.setServer(_server, _port);
 }
 
 bool MQTTClient::connect() {
-    return _client.connect(_clientId);
+    if (_username && _password) {
+        return _client.connect(_clientId, _username, _password);
+    } else {
+        return _client.connect(_clientId);
+    }
 }
 
 bool MQTTClient::publish(const char* topic, const char* payload) {

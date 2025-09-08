@@ -6,7 +6,7 @@
 
 class MQTTClient {
 public:
-    MQTTClient(const char* server, int port, const char* clientId);
+    MQTTClient(const char* server, int port, const char* clientId, const char* username = nullptr, const char* password = nullptr);
     bool connect();
     bool publish(const char* topic, const char* payload);
     bool subscribe(const char* topic);
@@ -20,6 +20,8 @@ private:
     const char* _server;
     int _port;
     const char* _clientId;
+    const char* _username;
+    const char* _password;
 };
 
 #endif

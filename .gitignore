@@ -7,3 +7,4 @@
 src/edge-impulse-sdk
 src/model-parameters
 src/tflite-model
+src/config/keys.h

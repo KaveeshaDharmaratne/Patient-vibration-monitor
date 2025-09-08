@@ -10,6 +10,13 @@ This directory handles all communication protocols for the Patient Vibration Mon
 
 ## Changes Log
 
+### 2025-09-06 - Adafruit IO Integration
+- Updated MQTT client to connect to Adafruit IO (io.adafruit.com)
+- Added authentication support with username and API key
+- Changed topic format to Adafruit IO standard: `username/feeds/feedname`
+- Simplified payload format for cleaner alerts with timestamp
+- Updated connection messages to reflect Adafruit IO usage
+
 ### 2025-09-06 - MQTT Integration in Main
 - Integrated MQTT client in `main.cpp` for publishing anomaly alerts
 - Added MQTT connection in setup after WiFi
